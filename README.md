@@ -2,12 +2,15 @@
  CLASSIFICADOR AROUSAL-VALENCE: Q1-Q4 (MODELO CIRCUMPLEXO DE RUSSELL)
 
 
-Artigo de referencia:
+Dissertação de Mestrado:
   "Caracterizacao espectral de emocoes musicais no espaco arousal-valence:
    uma analise quadrante por quadrante"
 
-Autores do artigo:
-  Carlos Vitor Adorno Gomes e Eduardo Furtado de Simas Filho -- UFBA
+Autor:
+  Eng. Carlos Vitor Adorno Gomes -- PPGEEC/UFBA
+  
+Orientador:
+  Dr. Eduardo Furtado de Simas Filho -- PPGEEC/UFBA
 
 Dataset utilizado:
   DEAM (Database for Emotion Analysis using Music), 1802 faixas musicais
