@@ -57,8 +57,7 @@ treina um classificador Random Forest com validacao cruzada estratificada.
   9. Densidade espectral de potencia (PSD) media por quadrante (metodo de
      Welch)
   10. Classificador Random Forest com validacao cruzada estratificada k=5
-  11. Resumo final dos resultados (Tabela 2 do artigo)
-
+  11. Resumo final dos resultados
 
 --------------------------------------------------------------------------------
  3. DESCRITORES (FEATURES) EXTRAIDOS
