@@ -1,6 +1,6 @@
-================================================================================
+
  CLASSIFICADOR AROUSAL-VALENCE: Q1-Q4 (MODELO CIRCUMPLEXO DE RUSSELL)
-================================================================================
+
 
 Artigo de referencia:
   "Caracterizacao espectral de emocoes musicais no espaco arousal-valence:
