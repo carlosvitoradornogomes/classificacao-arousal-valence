@@ -270,9 +270,8 @@ entre execucoes, dado o mesmo dataset de entrada.
 Este codigo e fornecido para fins academicos e de pesquisa. Ao utiliza-lo,
 cite o artigo original:
 
-  Gomes, C. V. A.; Simas Filho, E. F. "Caracterizacao espectral de emocoes
-  musicais no espaco arousal-valence: uma analise quadrante por quadrante."
-  UFBA.
+GOMES, C. V. A. Caracterização espectral de emoções musicais no espaço arousal-valence: uma análise quadrante por quadrante. Dissertação (Mestrado) — Universidade Federal da Bahia, Salvador, 2026.
+
 
 O dataset DEAM possui sua propria licenca de uso academico; consulte os
 termos em https://cvml.unige.ch/databases/DEAM/ antes de redistribuir
