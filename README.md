@@ -1,288 +1,174 @@
+# CLASSIFICADOR AROUSAL-VALENCE: Q1-Q4 (MODELO CIRCUMPLEXO DE RUSSELL)
 
- CLASSIFICADOR AROUSAL-VALENCE: Q1-Q4 (MODELO CIRCUMPLEXO DE RUSSELL)
+**Dissertação de Mestrado:**  
+*"Caracterização espectral de emoções musicais no espaço arousal-valence: uma análise quadrante por quadrante"*
 
+- **Autor:** Eng. Carlos Vitor Adorno Gomes — PPGEEC/UFBA  
+- **Orientador:** Prof. Dr. Eduardo Furtado Simas Filho — PPGEEC/UFBA  
+- **Dataset utilizado:** DEAM (*Database for Emotion Analysis using Music*), 1.802 faixas musicais com anotações dinâmicas de arousal e valence.
 
-Dissertação de Mestrado:
-  "Caracterizacao espectral de emocoes musicais no espaco arousal-valence:
-   uma analise quadrante por quadrante"
+---
 
-Autor:
-  Eng. Carlos Vitor Adorno Gomes -- PPGEEC/UFBA
-  
-Orientador:
-  Dr. Eduardo Furtado de Simas Filho -- PPGEEC/UFBA
+## 1. VISÃO GERAL
 
-Dataset utilizado:
-  DEAM (Database for Emotion Analysis using Music), 1802 faixas musicais
-  com anotacoes dinamicas de arousal e valence.
+Este repositório contém o notebook Jupyter [`Classificador_Arousal_Valence_DEAM.ipynb`](file:///c:/Users/vitto/Desktop/PPGEEC/Classificador_Arousal_Valence_DEAM.ipynb) (sincronizado com [`Classificador_22_07.ipynb`](file:///c:/Users/vitto/Desktop/PPGEEC/Classificador_22_07.ipynb)), que implementa um pipeline completo para a classificação de faixas musicais nos quatro quadrantes emocionais do Modelo Circumplexo de Russell:
 
+- **Q1 (Alto Arousal / Alta Valence):** Animado / Eufórico
+- **Q2 (Baixo Arousal / Alta Valence):** Calmo / Sereno
+- **Q3 (Baixo Arousal / Baixa Valence):** Triste / Melancólico
+- **Q4 (Alto Arousal / Baixa Valence):** Tenso / Raivoso
 
---------------------------------------------------------------------------------
- 1. VISAO GERAL
---------------------------------------------------------------------------------
+O particionamento em quadrantes é realizado pelas medianas globais de arousal e valence da base DEAM. O pipeline extrai descritores espectrais/energéticos, realiza validação estatística não-paramétrica, executa seleção supervisionada de atributos, treina múltiplos classificadores de Machine Learning com validação cruzada aninhada (*Nested Cross-Validation*) e compara os resultados contra a literatura científica e uma arquitetura especialista de classificadores binários paralelos.
 
-Este repositorio contem um notebook Jupyter (Classificador_Arousal_Valence.ipynb)
-que reproduz a metodologia do artigo acima para classificar faixas musicais em
-quatro quadrantes emocionais do modelo circumplexo de Russell:
+---
 
-  Q1 - Alto Arousal  / Alta  Valence  -> Animado / Euforico
-  Q2 - Baixo Arousal / Alta  Valence  -> Calmo   / Sereno
-  Q3 - Baixo Arousal / Baixa Valence  -> Triste  / Melancolico
-  Q4 - Alto Arousal  / Baixa Valence  -> Tenso   / Raivoso
+## 2. ESTRUTURA DO PIPELINE (SEÇÕES DO NOTEBOOK)
 
-O particionamento em quadrantes e feito pelas medianas globais de arousal e
-valence do dataset (garantindo aproximadamente 450 amostras por classe).
+1. **Importações de Bibliotecas e Configuração do Ambiente**
+2. **Configuração dos Caminhos dos Arquivos** (CSVs e pasta de áudios)
+3. **Carregamento das Anotações DEAM e Particionamento Q1-Q4**
+4. **Pré-processamento e Extração de Features Espectrais** (janela de Hann, PSD de Welch, centroide, largura de banda, roll-off, ZCR, energia RMS)
+5. **Extração de Features dos Áudios do DEAM** (com opção de carregamento direto via CSV pré-extraído `features_extraidas.csv`)
+6. **Construção do Dataset Final** (merge de features + anotações + rótulos de quadrante)
+7. **Análise Estatística:** Teste de Kruskal-Wallis e Tamanho de Efeito (\(\eta^2\)) + Post-hoc de Dunn com correção de Bonferroni
+8. **Visualizações Estatísticas:** Histogramas e Boxplots por quadrante
+8.5. **Visualização do Espaço de Características via PCA** (Projeção 2D das componentes principais)
+9. **Densidade Espectral de Potência (PSD) Média por Quadrante** (Método de Welch)
+10. **Análise da Relevância e Seleção de Atributos (*Feature Selection*):** Ranking explicativo e seleção supervisionada via `SelectKBest` por fold
+11. **Abordagem Multiclasse Direta (4 Quadrantes Q1-Q4) e Comparação de Classificadores:** Validação Cruzada Aninhada (Nested CV 5x3 Folds) com busca de hiperparâmetros por `GridSearchCV` comparando *Random Forest*, *SVM*, *MLP (Rede Neural)*, *XGBoost / Gradient Boosting*, *LightGBM* e *DummyClassifier (Baseline Majoritário)*
+12. **Abordagem de Classificadores Binários Especialistas em Paralelo (Arousal & Valence):** Dois classificadores binários independentes (`Arousal_bin` + `Valence_bin`) cujas predições são combinadas para mapeamento no espaço de 4 quadrantes
+13. **Análise Comparativa Global, Benchmark da Literatura e Consolidação:** Consolidação das tabelas comparativas, gráficos de desempenho, matrizes de confusão e integração dos resultados da literatura via `literatura_deam_benchmark.csv`
 
-O pipeline extrai 5 descritores espectrais/energeticos de cada faixa, aplica
-testes estatisticos nao-parametricos (Kruskal-Wallis + post-hoc de Dunn) e
-treina um classificador Random Forest com validacao cruzada estratificada.
+---
 
+## 3. DESCRITORES (FEATURES) EXTRAÍDOS
 
---------------------------------------------------------------------------------
- 2. ESTRUTURA DO PIPELINE (SECOES DO NOTEBOOK)
---------------------------------------------------------------------------------
+- `spectral_centroid`: Centroide Espectral (Hz) — indica o "brilho" do sinal sonoro.
+- `spectral_bandwidth`: Largura de Banda Espectral (Hz) — mensura a dispersão de frequências.
+- `spectral_rolloff`: Frequência de Roll-off a 85% da energia espectral (Hz).
+- `zcr`: Taxa de Cruzamentos por Zero (*Zero Crossing Rate*).
+- `rms_energy`: Energia RMS do sinal normalizado.
 
-  1. Importacoes de bibliotecas
-  2. Configuracao dos caminhos de arquivos (CSVs e pasta de audio)
-  3. Carregamento das anotacoes DEAM e particionamento em Q1-Q4
-  4. Pre-processamento e definicao das funcoes de extracao de features
-     espectrais (janela de Hann, PSD de Welch, centroide, largura de banda,
-     roll-off, ZCR, energia RMS)
-  5. Extracao de features dos arquivos .mp3 do DEAM (ou carregamento de um
-     CSV de features ja extraidas)
-  6. Construcao do dataset final (merge features + anotacoes + quadrante)
-  7. Analise estatistica: teste de Kruskal-Wallis e tamanho de efeito (eta2)
-  8. Histogramas e boxplots das features por quadrante
-  8.5. Visualizacao do espaco de caracteristicas via PCA (2 componentes)
-  9. Densidade espectral de potencia (PSD) media por quadrante (metodo de
-     Welch)
-  10. Classificador Random Forest com validacao cruzada estratificada k=5
-  11. Resumo final dos resultados
+### Parâmetros de Processamento:
+- **Taxa de amostragem ($SR$):** 22.050 Hz
+- **Tamanho da janela ($L$):** 2.048 amostras ($\approx 46,4$ ms a 44,1 kHz)
+- **Sobreposição (*hop*):** 50% ($L // 2$)
+- **Limiar de Roll-off:** 85% da energia espectral
+- **Janela de ponderação:** Hann
 
---------------------------------------------------------------------------------
- 3. DESCRITORES (FEATURES) EXTRAIDOS
---------------------------------------------------------------------------------
+---
 
-  - spectral_centroid   : centroide espectral (Hz)
-  - spectral_bandwidth  : largura de banda espectral (Hz)
-  - spectral_rolloff    : frequencia de roll-off a 85% da energia (Hz)
-  - zcr                 : taxa de cruzamentos por zero
-  - rms_energy          : energia RMS do sinal normalizado
+## 4. ESTRUTURA DE PASTAS ESPERADA
 
-Parametros de processamento:
-  - Taxa de amostragem (SR)     : 22050 Hz
-  - Tamanho da janela (L)       : 2048 amostras (~46,4 ms a 44100 Hz)
-  - Sobreposicao (hop)          : 50% (L // 2)
-  - Limiar de roll-off          : 85% da energia espectral
-  - Janela utilizada            : Hann
+```text
+projeto/
+│-- Classificador_Arousal_Valence_DEAM.ipynb  (Notebook principal refatorado para o GitHub)
+│-- Classificador_22_07.ipynb                 (Notebook de trabalho sincronizado)
+│-- literatura_deam_benchmark.csv             (Tabela de benchmarks da literatura DEAM)
+│-- features_extraidas.csv                    (Gerado pela Seção 5 ou fornecido previamente)
+│-- README.md                                 (Documentação técnica do projeto)
+│-- Images/                                   (Criada automaticamente ao salvar figuras)
+│   ├── circumplex_scatter.png
+│   ├── histogramas.png
+│   ├── boxplots.png
+│   ├── pca_espaco_caracteristicas.png
+│   ├── PSD.png
+│   ├── dunn_posthoc.png
+│   ├── matriz_confusao.png
+│   ├── importancia_features.png
+│   └── tabela_resumo_resultados.png
+```
 
+*Nota: Os arquivos de áudio `.mp3` da base DEAM não são incluídos no repositório devido ao tamanho e licença de uso.*
 
---------------------------------------------------------------------------------
- 4. ESTRUTURA DE PASTAS ESPERADA
---------------------------------------------------------------------------------
+---
 
-  projeto/
-  |-- Classificador_Arousal_Valence.ipynb
-  |-- README.txt
-  |-- Images/                          (criada automaticamente pelo notebook)
-  |   |-- circumplex_scatter.png
-  |   |-- histogramas.png
-  |   |-- boxplots.png
-  |   |-- pca_espaco_caracteristicas.png
-  |   |-- resultados_espaco_caracteristicas.txt
-  |   |-- PSD.png
-  |   |-- dunn_posthoc.png
-  |   |-- matriz_confusao.png
-  |   |-- importancia_features.png
-  |   |-- tabela_describe_features.png
-  |   |-- tabela_kruskal_wallis.png
-  |   |-- tabela_dunn_posthoc.png
-  |   |-- tabela_metricas_por_quadrante.png
-  |   `-- tabela_resumo_resultados.png
-  `-- features_extraidas.csv           (gerado pela Secao 5, se aplicavel)
-
-Os dados do DEAM (audio e anotacoes) NAO estao incluidos neste repositorio
-devido ao tamanho e a licenca do dataset. Veja a Secao 6 para obtencao.
-
-
---------------------------------------------------------------------------------
- 5. DEPENDENCIAS
---------------------------------------------------------------------------------
+## 5. DEPENDÊNCIAS
 
 Requer Python 3.9+ e as seguintes bibliotecas:
 
-  numpy
-  pandas
-  matplotlib
-  scipy
-  scikit-posthocs
-  seaborn
-  librosa
-  tqdm
-  scikit-learn
-  jupyter (ou jupyterlab)
+```bash
+pip install numpy pandas matplotlib scipy scikit-posthocs seaborn \
+            librosa tqdm scikit-learn xgboost lightgbm jupyter
+```
 
-Instalacao via pip:
+*Observação: O `librosa` utiliza `ffmpeg` / `libsndfile` para leitura dos arquivos `.mp3`. Em sistemas Linux/Debian/Ubuntu:*
+```bash
+sudo apt-get install ffmpeg libsndfile1
+```
 
-  pip install numpy pandas matplotlib scipy scikit-posthocs seaborn \
-              librosa tqdm scikit-learn jupyter
+---
 
-Observacao: o librosa depende do ffmpeg/libsndfile para leitura de arquivos
-.mp3. Em sistemas Linux/Debian/Ubuntu, instale com:
+## 6. OBTENÇÃO DO DATASET DEAM
 
-  sudo apt-get install ffmpeg libsndfile1
+O dataset DEAM (*Database for Emotion Analysis using Music*) pode ser obtido para fins acadêmicos em:  
+🔗 [https://cvml.unige.ch/databases/DEAM/](https://cvml.unige.ch/databases/DEAM/)
 
+Arquivos necessários:
+- Áudios em formato `.mp3`
+- Anotações dinâmicas de arousal e valence:
+  - `annotations/annotations averaged per song/dynamic (per second annotations)/arousal.csv`
+  - `annotations/annotations averaged per song/dynamic (per second annotations)/valence.csv`
 
---------------------------------------------------------------------------------
- 6. OBTENCAO DO DATASET DEAM
---------------------------------------------------------------------------------
+---
 
-O dataset DEAM (Database for Emotion Analysis using Music) esta disponivel
-publicamente para fins academicos em:
+## 7. CONFIGURAÇÃO ANTES DE EXECUTAR
 
-  https://cvml.unige.ch/databases/DEAM/
+Na **Seção 2** do notebook (*Caminhos dos Arquivos*), ajuste as variáveis de ambiente:
 
-Sao necessarios:
-  - Os arquivos de audio (.mp3)
-  - As anotacoes dinamicas (per-second) de arousal e valence:
-      annotations/annotations averaged per song/dynamic (per second
-      annotations)/arousal.csv
-      annotations/annotations averaged per song/dynamic (per second
-      annotations)/valence.csv
+```python
+PATH_AROUSAL  = "caminho/para/arousal.csv"
+PATH_VALENCE  = "caminho/para/valence.csv"
+PATH_AUDIO    = "caminho/para/pasta_audios_mp3/"
+PATH_FEATURES = "features_extraidas.csv"
+```
 
-Apos o download, ajuste os caminhos na Secao 2 do notebook (ver Secao 7
-abaixo).
+---
 
+## 8. COMO EXECUTAR
 
---------------------------------------------------------------------------------
- 7. CONFIGURACAO ANTES DE EXECUTAR
---------------------------------------------------------------------------------
+1. Clone o repositório e instale as dependências (Seção 5).
+2. Configure os caminhos do dataset (Seção 7).
+3. Abra o notebook no Jupyter:
+   ```bash
+   jupyter notebook Classificador_Arousal_Valence_DEAM.ipynb
+   ```
+4. Execute as células em ordem sequencial.
+   - **Com CSV pré-extraído:** pule a execução da extração de áudios e utilize o bloco alternativo da Seção 5 para carregar `features_extraidas.csv`.
+   - **Sem CSV pré-extraído:** execute a célula de extração da Seção 5 para gerar o arquivo `.csv` a partir das faixas `.mp3`.
 
-Na Secao 2 do notebook ("Caminhos dos Arquivos"), ajuste as 4 variaveis
-abaixo para o seu ambiente. Os valores padrao do notebook sao apenas
-EXEMPLOS da maquina original do autor e NAO existirao no seu computador:
+---
 
-  PATH_AROUSAL  -> CSV de anotacoes de arousal do DEAM
-  PATH_VALENCE  -> CSV de anotacoes de valence do DEAM
-  PATH_AUDIO    -> pasta contendo os arquivos .mp3 do DEAM
-  PATH_FEATURES -> CSV de features ja extraidas (opcional, ver Secao 8)
+## 9. METODOLOGIA E ESTRATÉGIAS DE MACHINE LEARNING
 
-Se os caminhos nao forem corrigidos, o notebook falhara com
-FileNotFoundError ao tentar carregar os arquivos.
+- **Teste de Kruskal-Wallis & Eta-quadrado ($\eta^2$):** Validação da capacidade de discriminação estatística de cada atributo entre os 4 quadrantes.
+- **Seleção de Atributos (*Feature Selection*):** Avaliação de modelos utilizando o conjunto total (5 atributos) e o conjunto selecionado via `SelectKBest(f_classif)` executado estritamente dentro dos folds de treino.
+- **Modelos de Aprendizado de Máquina:**
+  - *Baseline Majoritário (`DummyClassifier`)*
+  - *Random Forest Classifier*
+  - *Support Vector Machine (SVC rbf/linear)*
+  - *Multi-Layer Perceptron (MLPClassifier)*
+  - *XGBoost / Gradient Boosting Classifier*
+  - *LightGBM Classifier*
+- **Validação Cruzada Aninhada (*Nested CV*):**
+  - **Outer Loop:** 5-fold Stratified K-Fold para avaliação não viesada do desempenho fora da amostra.
+  - **Inner Loop:** 3-fold Stratified K-Fold com `GridSearchCV` para otimização de hiperparâmetros em cada fold externo.
+- **Abordagem Binária Especialista Paralela:** Treinamento independente de um classificador para Arousal (High vs Low) e um para Valence (High vs Low), combinando suas predições matricialmente para a atribuição final do quadrante (Q1-Q4).
+- **Benchmark da Literatura:** Integração automatizada da tabela de comparação com resultados prévios na base DEAM via `literatura_deam_benchmark.csv`.
 
+---
 
---------------------------------------------------------------------------------
- 8. COMO EXECUTAR
---------------------------------------------------------------------------------
+## 10. LICENÇA E CITAÇÃO
 
-1. Clone o repositorio e instale as dependencias (Secao 5).
-2. Baixe o dataset DEAM e ajuste os caminhos (Secoes 6 e 7).
-3. Abra o notebook:
+Este código é disponibilizado para fins acadêmicos e de pesquisa. Ao utilizá-lo, cite o trabalho:
 
-     jupyter notebook Classificador_Arousal_Valence.ipynb
-
-4. Execute as celulas em ordem, de cima para baixo.
-
-   - Se for a PRIMEIRA execucao (sem CSV de features pre-extraidas):
-     execute a celula da Secao 5 ("Extracao de Features das Musicas do
-     DEAM"). Ela percorre todos os arquivos .mp3, extrai os 5 descritores
-     e salva o resultado em "features_extraidas.csv".
-
-   - Se voce JA POSSUI um CSV de features extraidas previamente:
-     pule a celula de extracao e execute a celula alternativa da Secao
-     "Alternativa: carregar CSV de features pre-extraidas", que apenas le
-     o CSV indicado em PATH_FEATURES.
-
-5. As demais secoes (estatistica, visualizacoes, PCA, PSD, Random Forest e
-   resumo final) podem ser executadas em sequencia sem intervencao manual.
-
-
---------------------------------------------------------------------------------
- 9. SAIDAS GERADAS
---------------------------------------------------------------------------------
-
-Com SAVE_FIGURES = True (padrao), todas as figuras e tabelas de resultado
-sao salvas automaticamente na pasta "Images/":
-
-  Graficos:
-    - circumplex_scatter.png        : dispersao no espaco arousal-valence
-    - histogramas.png               : histogramas das features por quadrante
-    - boxplots.png                  : boxplots das features por quadrante
-    - pca_espaco_caracteristicas.png: projecao PCA 2D das features
-    - PSD.png                       : PSD media por quadrante (Welch)
-    - dunn_posthoc.png              : heatmap dos p-valores do post-hoc de Dunn
-    - matriz_confusao.png           : matriz de confusao 4x4 (Random Forest)
-    - importancia_features.png      : importancia das features (Gini)
-
-  Tabelas (imagens .png geradas a partir dos resultados numericos):
-    - tabela_describe_features.png        : estatisticas descritivas
-    - tabela_kruskal_wallis.png           : resultados do teste de Kruskal-Wallis
-    - tabela_dunn_posthoc.png             : p-valores do post-hoc de Dunn
-    - tabela_metricas_por_quadrante.png   : precisao/recall/F1 por quadrante
-    - tabela_resumo_resultados.png        : resumo final (Tabela 2 do artigo)
-
-  Outros arquivos:
-    - resultados_espaco_caracteristicas.txt : trecho LaTeX com a secao do PCA,
-                                               pronto para inclusao no artigo
-    - features_extraidas.csv                : features extraidas (Secao 5)
-
-
---------------------------------------------------------------------------------
- 10. METODOLOGIA ESTATISTICA
---------------------------------------------------------------------------------
-
-  - Teste de Kruskal-Wallis: teste nao-parametrico para comparar as 5
-    features entre os 4 quadrantes (extensao do teste de Mann-Whitney para
-    multiplos grupos).
-
-  - Tamanho de efeito (eta2): eta2 = (H - (k-1)) / (n-k), com k=4 grupos.
-
-  - Post-hoc de Dunn com correcao de Bonferroni: identifica quais pares de
-    quadrantes diferem significativamente entre si (aplicado ao centroide
-    espectral, feature de maior eta2).
-
-
---------------------------------------------------------------------------------
- 11. CLASSIFICADOR
---------------------------------------------------------------------------------
-
-  - Algoritmo       : Random Forest (scikit-learn RandomForestClassifier)
-  - Hiperparametros  : n_estimators=100, random_state=42
-  - Validacao        : K-Fold estratificado, k=5 (shuffle=True, random_state=42)
-  - Metricas         : acuracia, F1-macro, precisao-macro, recall-macro
-                       (media +- desvio-padrao entre os folds)
-  - Baseline aleatorio de referencia (4 classes balanceadas): 25,0%
-
-
---------------------------------------------------------------------------------
- 12. REPRODUTIBILIDADE
---------------------------------------------------------------------------------
-
-Todas as etapas com componente aleatorio utilizam random_state/seed fixos
-(np.random.seed(42), random_state=42), garantindo resultados reprodutiveis
-entre execucoes, dado o mesmo dataset de entrada.
-
-
---------------------------------------------------------------------------------
- 13. LICENCA E CITACAO
---------------------------------------------------------------------------------
-
-Este codigo e fornecido para fins academicos e de pesquisa. Ao utiliza-lo,
-cite o artigo original:
-
-GOMES, C. V. A. Caracterização espectral de emoções musicais no espaço arousal-valence: uma análise quadrante por quadrante. Dissertação (Mestrado) — Universidade Federal da Bahia, Salvador, 2026.
-
-
-O dataset DEAM possui sua propria licenca de uso academico; consulte os
-termos em https://cvml.unige.ch/databases/DEAM/ antes de redistribuir
-qualquer dado derivado do audio original.
-
-
---------------------------------------------------------------------------------
- 14. CONTATO / MANUTENCAO
---------------------------------------------------------------------------------
-
-Para reportar problemas ou sugerir melhorias neste notebook, abra uma
-"Issue" no repositorio do projeto no GitHub.
-
-================================================================================
+```bibtex
+@mastersthesis{gomes2026caracterizacao,
+  author       = {Carlos Vitor Adorno Gomes},
+  title        = {Caracterização espectral de emoções musicais no espaço arousal-valence: uma análise quadrante por quadrante},
+  school       = {Universidade Federal da Bahia (UFBA)},
+  year         = {2026},
+  type         = {Dissertação (Mestrado em Engenharia Elétrica)},
+  address      = {Salvador}
+}
+```
